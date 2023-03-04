@@ -12,6 +12,7 @@ namespace CFB_Ranker.API.DTO
      */
     public class SchoolDTO : AbstractSchool
     {
-        public SchoolDTO(string id, string school, string mascot) : base(id, school, mascot) { }
+        public SchoolDTO(string id, string school, string mascot, string color, string alt_Color, string[] logos) 
+            : base(id, school, mascot, color, alt_Color, logos) { }
     }
 }

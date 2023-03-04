@@ -8,7 +8,10 @@ namespace CFB_Ranker.Persistence.Serialization
     public class SerSchool : AbstractSchool, ISer
     {
         [JsonConstructor]
-        public SerSchool(string id, string school, string mascot) : base(id, school, mascot) { }
-        public SerSchool(AbstractSchool school) : this(school.Id, school.School, school.Mascot) { }
+        public SerSchool(string id, string school, string mascot, string color, string alt_Color, string[] logos)
+            : base(id, school, mascot, color, alt_Color, logos) { }
+
+        public SerSchool(AbstractSchool school) :
+            this(school.Id, school.School, school.Mascot, school.Color, school.Alt_Color, school.Logos) { }
     }
 }

@@ -6,7 +6,5 @@ using System.Threading.Tasks;
 
 namespace CFB_Ranker.Persistence.Serializable_Models
 {
-    public interface ISer
-    {
-    }
+    public interface ISer { }
 }

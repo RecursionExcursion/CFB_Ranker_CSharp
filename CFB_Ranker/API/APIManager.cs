@@ -24,7 +24,7 @@ namespace CFB_Ranker.API
         public List<SchoolDTO> GetAllSchools()
         {
             string teams = GetJSONFromAPI(allTeamsUrl);
-            return JsonConvert.DeserializeObject<List<SchoolDTO>>(teams);
+            return JsonConvert.DeserializeObject<List<SchoolDTO>>(teams)!;
         }
 
         public void GetDataForSeason()

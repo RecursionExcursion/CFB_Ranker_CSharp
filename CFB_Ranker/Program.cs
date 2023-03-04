@@ -9,6 +9,10 @@ Console.WriteLine("Hello, World!");
 
 
 
+PersistenceManager manager = new();
+Season season = manager.LoadData();
+
+
 
 Console.WriteLine();
 
