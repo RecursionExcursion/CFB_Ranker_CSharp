@@ -18,7 +18,6 @@ namespace CFB_Ranker.API
         public GameWeek(int week, List<TeamStatsDTO> teamStatsDTOs, List<GameInfoDTO> gameInfoDTOs)
         {
             Week = week;
-
             AddToTeamStatsMap(teamStatsDTOs);
             AddToGameInfoDTOsMap(gameInfoDTOs);
         }

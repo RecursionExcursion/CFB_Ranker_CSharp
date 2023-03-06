@@ -46,19 +46,19 @@ namespace CFB_Ranker.API
             void AddToGameWeekCollection(string seasonType, int week)
             {
                 //Build URL strings
-                string teamGamesUrl = teamGamesUrlString + seasonType + "&week=" + 1;
-                string gameInfoUrl = gamesUrlString[0] + "&week=" + 1 + seasonType + gamesUrlString[1];
+                string teamGamesUrl = teamGamesUrlString + seasonType + "&week=" + week;
+                string gameInfoUrl = gamesUrlString[0] + "&week=" + week + seasonType + gamesUrlString[1];
 
                 //Make API calls
                 string gameStats = GetJSONFromAPI(teamGamesUrl);
                 string gameInfos = GetJSONFromAPI(gameInfoUrl);
 
                 //Convert JSONs to DTOs
-                List<TeamStatsDTO> teamStatsDTOs = JsonConvert.DeserializeObject<List<TeamStatsDTO>>(gameStats);
-                List<GameInfoDTO> gameInfoDTOs = JsonConvert.DeserializeObject<List<GameInfoDTO>>(gameInfos);
+                List<TeamStatsDTO> teamStatsDTOs = JsonConvert.DeserializeObject<List<TeamStatsDTO>>(gameStats)!;
+                List<GameInfoDTO> gameInfoDTOs = JsonConvert.DeserializeObject<List<GameInfoDTO>>(gameInfos)!;
 
                 //Adjust 'week'
-                week = seasonType == postSeason ? GameWeeks.Count + 1 : week;
+                week = seasonType == postSeason ? GameWeeks.Count + (int) 1 : week;
 
                 //Add to data structure
                 GameWeeks.Add(new GameWeek(week, teamStatsDTOs, gameInfoDTOs));
