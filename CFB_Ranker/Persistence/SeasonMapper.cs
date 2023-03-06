@@ -10,7 +10,7 @@ namespace CFB_Ranker.Persistence
 
         public Season BuildSeason()
         {
-            return  new Season()
+            return new Season()
             {
                 Year = 2022,
                 Schools = MapSchoolsToSerializableObjects(),
@@ -28,7 +28,7 @@ namespace CFB_Ranker.Persistence
                 SerSchool school = new(dto);
                 schools.Add(school);
             }
-           return schools;
+            return schools;
         }
 
         private List<SerGame> MapGamesToSerializableObjects()
@@ -48,26 +48,28 @@ namespace CFB_Ranker.Persistence
                     //Constuct Serializable Game
                     SerGame game = new(gameInfoDTOsMap[gameId]);
 
-                    TeamStatsDTO teamStatsDTO = teamStatsDTOMap[gameId];
-
-                    List<SerTeam> serTeamsArr = new();
-                    foreach (var team in teamStatsDTO.Teams)
+                    TeamStatsDTO? teamStatsDTO;
+                    if (teamStatsDTOMap.TryGetValue(gameId, out teamStatsDTO))
                     {
-                        List<SerStat> stats = new();
-                        foreach (var stat in team.Stats)
+                        List<SerTeam> serTeamsArr = new();
+                        foreach (var team in teamStatsDTO.Teams)
                         {
-                            //Constuct Serializable Stat
-                            SerStat s = new(stat.Category,stat.Stat);
-                            stats.Add(s);
+                            List<SerStat> stats = new();
+                            foreach (var stat in team.Stats)
+                            {
+                                //Constuct Serializable Stat
+                                SerStat s = new(stat.Category, stat.Stat);
+                                stats.Add(s);
+                            }
+                            //Constuct Serializable Team
+                            SerTeam t = new(team.School, team.Points, stats.ToArray());
+                            serTeamsArr.Add(t);
                         }
-                        //Constuct Serializable Team
-                        SerTeam t = new(team.School, team.Points, stats.ToArray());
-                        serTeamsArr.Add(t);
+                        //Constuct Serializable TeamStats (Both teams and game id)
+                        SerTeamStats serTeamStats = new(teamStatsDTO.Id, serTeamsArr.ToArray());
+                        game.TeamStats = serTeamStats;
+                        serializableGames.Add(game);
                     }
-                    //Constuct Serializable TeamStats (Both teams and game id)
-                    SerTeamStats serTeamStats = new(teamStatsDTO.Id, serTeamsArr.ToArray());
-                    game.TeamStats = serTeamStats;
-                    serializableGames.Add(game);
                 }
             }
             return serializableGames;
