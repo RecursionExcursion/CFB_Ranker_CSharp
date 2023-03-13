@@ -45,7 +45,7 @@ namespace CFB_Ranker.Service
         {
             School = team.School;
             Rank = team.Rank;
-            Record = team.Record;
+            Record = new WinLoss(team.Record);
             TotalOffense = team.TotalOffense;
             TotalDefense = team.TotalDefense;
             TotalPointsFor = team.TotalPointsFor;
@@ -95,6 +95,12 @@ namespace CFB_Ranker.Service
             {
                 Wins = 0;
                 Losses = 0;
+            }
+
+            public WinLoss(WinLoss winLoss)
+            {
+                Wins = winLoss.Wins;
+                Losses = winLoss.Losses;
             }
         }
     }

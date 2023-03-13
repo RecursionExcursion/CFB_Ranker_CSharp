@@ -1,6 +1,7 @@
 ﻿using CFB_Ranker.AbstractModels;
 using CFB_Ranker.Persistence.Serialization;
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 
 namespace CFB_Ranker.Service
 {
@@ -12,47 +13,50 @@ namespace CFB_Ranker.Service
         public RankedSeason UnWeightedRankedSeason { get; }
         public RankedSeason WeightedRankedSeason { get; }
 
+        private readonly WeightDistributor _weightDistributor;
+
         [Range(1, 1)]
-        private readonly int firstWeek = 1;
-        private readonly int finalWeek;
+        private readonly int _firstWeek = 1;
+        private readonly int _finalWeek;
 
-        private readonly string GetWins = "GetWins";
-        private readonly string GetLosses = "GetLosses";
+        private const string _getWins = "GetWins";
+        private const string _getLosses = "GetLosses";
 
-        private readonly string GetTotalOffensePerGame = "GetTotalOffensePerGame";
-        private readonly string GetTotalDefensePerGame = "GetTotalDefensePerGame";
+        private const string _getTotalOffensePerGame = "GetTotalOffensePerGame";
+        private const string _getTotalDefensePerGame = "GetTotalDefensePerGame";
 
-        private readonly string GetPointsForPerGame = "GetPointsForPerGame";
-        private readonly string GetPointsAllowedPerGame = "GetPointsAllowedPerGame";
+        private const string _getPointsForPerGame = "GetPointsForPerGame";
+        private const string _getPointsAllowedPerGame = "GetPointsAllowedPerGame";
 
-        private readonly string GetStrengthOfSchedule = "GetStrengthOfSchedule";
+        private const string _getStrengthOfSchedule = "GetStrengthOfSchedule";
+        private const string _pollInteria = "PollIntertia";
 
-        public RankingAlgorithm(Season season)
+        public RankingAlgorithm(Season season, WeightDistributor weightDistributor)
         {
             UnWeightedRankedSeason = new();
             WeightedRankedSeason = new();
             Season = season;
-            finalWeek = Season.Games.Select(g => Convert.ToInt32(g.Week)).Max();
+            _finalWeek = Season.Games.Select(g => Convert.ToInt32(g.Week)).Max();
+            _weightDistributor = weightDistributor;
         }
 
         public void RankTeams()
         {
-            for (int i = firstWeek; i <= finalWeek; i++)
+            for (int i = _firstWeek; i <= _finalWeek; i++)
             {
                 UnWeightedRankedSeason.Weeks.Add(LinkTeamsToGamesForWeek(i, "regular"));
             }
             UnWeightedRankedSeason.Weeks.Add(LinkTeamsToGamesForWeek(1, "postseason"));
 
-            foreach (var week in UnWeightedRankedSeason.Weeks)
+            for (int i = 0; i < UnWeightedRankedSeason.Weeks.Count; i++)
             {
-                WeightedRankedSeason.Weeks.Add(SetWeightAndRank(week));
+                List<WeightedTeam>? week = UnWeightedRankedSeason.Weeks[i];
+
+                WeightedRankedSeason.Weeks.Add(SetWeightAndRank(week, i));
             }
-
-
-
         }
 
-        private List<WeightedTeam> SetWeightAndRank(List<WeightedTeam> teams)
+        private List<WeightedTeam> SetWeightAndRank(List<WeightedTeam> teams, int index)
         {
             List<WeightedTeam> teamsRankedByWins = teams.OrderByDescending(t => t.Record.Wins).ToList();
             List<WeightedTeam> teamsRankedByLosses = teams.OrderBy(t => t.Record.Losses).ToList();
@@ -63,15 +67,23 @@ namespace CFB_Ranker.Service
             List<WeightedTeam> teamsRankedByOffPG = teams.OrderByDescending(t => t.GetTotalOffensePerGame()).ToList();
             List<WeightedTeam> teamsRankedByDFPG = teams.OrderBy(t => t.GetTotalDefensePerGame()).ToList();
 
+            Dictionary<WeightedTeam, double> winMap = SetWeightOfRankings(teamsRankedByWins, _getWins);
+            Dictionary<WeightedTeam, double> lossMap = SetWeightOfRankings(teamsRankedByLosses, _getLosses);
 
-            Dictionary<WeightedTeam, double> winMap = SetWeightOfRankings(teamsRankedByWins, GetWins);
-            Dictionary<WeightedTeam, double> lossMap = SetWeightOfRankings(teamsRankedByLosses, GetLosses);
+            Dictionary<WeightedTeam, double> offMap = SetWeightOfRankings(teamsRankedByOffPG, _getTotalOffensePerGame);
+            Dictionary<WeightedTeam, double> defMap = SetWeightOfRankings(teamsRankedByDFPG, _getTotalDefensePerGame);
 
-            Dictionary<WeightedTeam, double> offMap = SetWeightOfRankings(teamsRankedByOffPG, GetTotalOffensePerGame);
-            Dictionary<WeightedTeam, double> defMap = SetWeightOfRankings(teamsRankedByDFPG, GetTotalDefensePerGame);
+            Dictionary<WeightedTeam, double> pFMap = SetWeightOfRankings(teamsRankedByPFPG, _getPointsForPerGame);
+            Dictionary<WeightedTeam, double> pAMap = SetWeightOfRankings(teamsRankedByPAPG, _getPointsAllowedPerGame);
 
-            Dictionary<WeightedTeam, double> pFMap = SetWeightOfRankings(teamsRankedByPFPG, GetPointsForPerGame);
-            Dictionary<WeightedTeam, double> pAMap = SetWeightOfRankings(teamsRankedByPAPG, GetPointsAllowedPerGame);
+            //Poll Inertia
+            List<WeightedTeam> lastWeeksPolls;
+            Dictionary<WeightedTeam, double> pollInteriaMap = null!;
+            if (index != 0)
+            {
+                lastWeeksPolls = WeightedRankedSeason.Weeks[index - 1];
+                pollInteriaMap = SetWeightOfRankings(lastWeeksPolls, _pollInteria);
+            }
 
             List<WeightedTeam> wTeams = new(teams);
 
@@ -79,12 +91,17 @@ namespace CFB_Ranker.Service
             foreach (var team in wTeams)
             {
                 double weight = 0;
-                weight = winMap[team];
-                weight = lossMap[team];
-                weight = offMap[team];
-                weight = defMap[team];
-                weight = pFMap[team];
-                weight = pAMap[team];
+                weight += winMap[team];
+                weight += lossMap[team];
+                weight += offMap[team];
+                weight += defMap[team];
+                weight += pFMap[team];
+                weight += pAMap[team];
+                if (index != 0)
+                {
+                    WeightedTeam mapTeam = pollInteriaMap.Keys.FirstOrDefault(t => t.School.Id == team.School.Id)!;
+                    weight += pollInteriaMap[mapTeam];
+                }
                 team.Weight = weight;
             }
             wTeams = wTeams.OrderBy(t => t.Weight).ToList();
@@ -94,9 +111,11 @@ namespace CFB_Ranker.Service
 
             List<WeightedTeam> teamsRankedBySS = wTeams.OrderBy(t => t.GetStrengthOfSchedule()).ToList();
 
-            Dictionary<WeightedTeam, double> SSMap = SetWeightOfRankings(teamsRankedBySS, GetStrengthOfSchedule);
+            Dictionary<WeightedTeam, double> SSMap = SetWeightOfRankings(teamsRankedBySS, _getStrengthOfSchedule);
 
             wTeams.ForEach(t => t.Weight += SSMap[t]);
+
+            wTeams = wTeams.OrderBy(t => t.Weight).ToList();
 
             SetRankings(wTeams);
             return wTeams;
@@ -110,7 +129,7 @@ namespace CFB_Ranker.Service
 
                 foreach (var game in team.Schedule)
                 {
-                    WeightedTeam opponent = null;
+                    WeightedTeam? opponent = null;
 
                     AbstractTeam thisTeam = game.TeamStats.Teams.Where(t => t.School == team.SchoolName).First();
                     AbstractTeam oppTeam = game.TeamStats.Teams.Where(t => t.School != team.SchoolName).First();
@@ -143,28 +162,53 @@ namespace CFB_Ranker.Service
 
         private Dictionary<WeightedTeam, double> SetWeightOfRankings(List<WeightedTeam> teams, string methodSignature)
         {
-            Dictionary<WeightedTeam, double> teamWeightMap = new();
-
-            WeightedTeam prevTeam = null!;
-
-            for (int i = 0, rankWeight = 1; i < teams.Count; i++)
+            //Sets multiplier
+            int multiplier = methodSignature switch
             {
-                WeightedTeam currTeam = teams[i];
+                _getWins => _weightDistributor.Wins,
+                _getLosses => _weightDistributor.Losses,
+                _getPointsForPerGame => _weightDistributor.PointsFor,
+                _getPointsAllowedPerGame => _weightDistributor.PointsAllowed,
+                _getTotalOffensePerGame => _weightDistributor.TotalOffense,
+                _getTotalDefensePerGame => _weightDistributor.TotalDefense,
+                _getStrengthOfSchedule => _weightDistributor.ScheduleStrength,
+                _pollInteria => _weightDistributor.PollInertia,
+                _ => 1,
+            };
 
-                if (prevTeam != null)
+            Dictionary<WeightedTeam, double> teamWeightMap = new();
+            if (methodSignature == _pollInteria)
+            {
+
+                for (int i = 0, rankWeight = 1; i < teams.Count; i++)
                 {
-                    var method = currTeam.GetType().GetMethods().Where(m => m.Name == methodSignature).First();
-
-                    double prevTeamVal = (double) method.Invoke(prevTeam, null);
-                    double currTeamVal = (double) method.Invoke(currTeam, null);
-
-                    if (prevTeamVal != currTeamVal)
-                    {
-                        rankWeight = i + 1;
-                    }
+                    WeightedTeam t = teams[i];
+                    teamWeightMap.Add(t, rankWeight++ * multiplier);
                 }
-                teamWeightMap.Add(currTeam, rankWeight);
-                prevTeam = currTeam;
+            } else
+            {
+
+                WeightedTeam prevTeam = null!;
+
+                for (int i = 0, rankWeight = 1; i < teams.Count; i++)
+                {
+                    WeightedTeam currTeam = teams[i];
+
+                    if (prevTeam != null)
+                    {
+                        var method = currTeam.GetType().GetMethods().Where(m => m.Name == methodSignature).First();
+
+                        double prevTeamVal = (double) method.Invoke(prevTeam, null);
+                        double currTeamVal = (double) method.Invoke(currTeam, null);
+
+                        if (prevTeamVal != currTeamVal)
+                        {
+                            rankWeight = i + 1;
+                        }
+                    }
+                    teamWeightMap.Add(currTeam, rankWeight * multiplier);
+                    prevTeam = currTeam;
+                }
             }
             return teamWeightMap;
         }
@@ -176,7 +220,7 @@ namespace CFB_Ranker.Service
 
             //Create Teams
             List<WeightedTeam> weightedTeams = season == "postseason" ?
-                weightedTeams = BuildTeamsForWeek(finalWeek + 1) :
+                weightedTeams = BuildTeamsForWeek(_finalWeek + 1) :
                 weightedTeams = BuildTeamsForWeek(week);
 
             //Link Games to Teams
