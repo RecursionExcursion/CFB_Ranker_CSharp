@@ -78,7 +78,6 @@ namespace CFB_Ranker.Service
             }
             throw new Exception("Game was not found");
         }
-
     }
 }
 

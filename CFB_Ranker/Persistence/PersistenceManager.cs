@@ -8,12 +8,14 @@ namespace CFB_Ranker.Persistence
 {
     public class PersistenceManager
     {
-        private readonly string completeRelativePath = @"..\..\..\Persistence\Team_Data\";
-        private readonly string filename = "file.json";
+        private readonly string _filePathFromRoot = @"\Persistence\Team_Data\file.json";
+
+        //Get Relative Root Dir of project
+        private string? GetRelativeDir() => Directory.GetParent(Directory.GetCurrentDirectory())?.Parent?.Parent?.FullName;
 
         public Season LoadData()
         {
-            string completePath = Path.Combine(completeRelativePath, filename);
+            string completePath = GetRelativeDir() + _filePathFromRoot;
             if (!File.Exists(completePath))
             {
                 Season season = new SeasonMapper().BuildSeason();
