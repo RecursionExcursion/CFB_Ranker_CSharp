@@ -15,6 +15,9 @@ namespace CFB_Ranker.Service
 
         private readonly WeightDistributor _weightDistributor;
 
+        private readonly string regularSeasonString = "regular";
+        private readonly string postSeasonString = "postseason";
+
         [Range(1, 1)]
         private readonly int _firstWeek = 1;
         private readonly int _finalWeek;
@@ -44,9 +47,12 @@ namespace CFB_Ranker.Service
         {
             for (int i = _firstWeek; i <= _finalWeek; i++)
             {
-                UnWeightedRankedSeason.Weeks.Add(LinkTeamsToGamesForWeek(i, "regular"));
+                UnWeightedRankedSeason.Weeks.Add(LinkTeamsToGamesForWeek(i, regularSeasonString));
             }
-            UnWeightedRankedSeason.Weeks.Add(LinkTeamsToGamesForWeek(1, "postseason"));
+            if (Season.Games.Any(g => g.Season_Type == postSeasonString))
+            {
+                UnWeightedRankedSeason.Weeks.Add(LinkTeamsToGamesForWeek(1, postSeasonString));
+            }
 
             for (int i = 0; i < UnWeightedRankedSeason.Weeks.Count; i++)
             {
@@ -219,7 +225,7 @@ namespace CFB_Ranker.Service
             List<SerGame> games = Season.Games.Where(g => Convert.ToInt32(g.Week) == week).Where(g => g.Season_Type == season).ToList();
 
             //Create Teams
-            List<WeightedTeam> weightedTeams = season == "postseason" ?
+            List<WeightedTeam> weightedTeams = season == postSeasonString ?
                 weightedTeams = BuildTeamsForWeek(_finalWeek + 1) :
                 weightedTeams = BuildTeamsForWeek(week);
 
